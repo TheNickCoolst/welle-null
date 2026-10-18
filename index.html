@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta property="og:title" content="Welle Null">
+<meta property="og:description" content="Ein Radiosender, der seine Musik live im Browser komponiert. Alle hören zur selben Zeit denselben Ton.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thenickcoolst.github.io/welle-null/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23141615%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%278%27 fill=%27none%27 stroke=%27%23ff6726%27 stroke-width=%273.5%27/%3E%3C/svg%3E">
+<title>Welle Null</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Welle Null ist ein Radiosender, der seine Musik live im Browser komponiert. Alle hören zur selben Zeit denselben Ton. Ohne Werbung, ohne Lizenzen, ohne Stream.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&family=Michroma&display=swap">
+<style>
+:root{
+  /* Layout: Tuner-Frontplatte. Lochblech-Lautsprecher + Anzeige, darunter eine 24-Stunden-Senderskala, dann das Beiheft. */
+  --bg:#e5e6e1;
+  --face:#f4f4f0;
+  --ink:#1a1c1b;
+  --muted:#5c615b;
+  --line:#cfd1ca;
+  --signal:#d24c0a;
+  --on-signal:#ffffff;
+  --hole:#d4d6cf;
+  --dial:#141615;
+  --dial-ink:#ebe9da;
+  --dial-muted:#80847a;
+  --needle:#ff6726;
+  --f-display:"Michroma","Eurostile","Microgramma","Arial Black",sans-serif;
+  --f-body:"Instrument Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --s-xs:12px;--s-sm:14px;--s-md:16px;--s-lg:20px;--s-xl:clamp(28px,4.2vw,42px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121413;--face:#1b1e1c;--ink:#e6e7e1;--muted:#9ba097;--line:#2d312e;
+    --signal:#ff6a2a;--on-signal:#1a0b03;--hole:#2a2e2b;
+    --dial:#090a0a;--dial-ink:#ebe9da;--dial-muted:#70746a;--needle:#ff6a2a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121413;--face:#1b1e1c;--ink:#e6e7e1;--muted:#9ba097;--line:#2d312e;
+  --signal:#ff6a2a;--on-signal:#1a0b03;--hole:#2a2e2b;
+  --dial:#090a0a;--dial-ink:#ebe9da;--dial-muted:#70746a;--needle:#ff6a2a;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 56px;display:grid;gap:24px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.wordmark{margin:0;font:400 clamp(24px,4.4vw,38px)/1 var(--f-display);letter-spacing:.06em;text-transform:uppercase}
+.tag{margin:10px 0 0;color:var(--muted);font-size:var(--s-sm)}
+.status{display:flex;align-items:center;gap:14px}
+.lamp{font:400 10px/1 var(--f-display);letter-spacing:.16em;text-transform:uppercase;padding:7px 10px 6px;border-radius:4px;background:var(--signal);color:var(--on-signal);box-shadow:0 0 0 3px color-mix(in srgb,var(--signal) 22%,transparent)}
+.clock{font-size:var(--s-sm);color:var(--muted)}
+
+.set{background:var(--face);border:1px solid var(--line);border-radius:16px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);overflow:hidden}
+.grille{aspect-ratio:1/1;max-width:100%;border-right:1px solid var(--line);padding:18px}
+.grille canvas{display:block;width:100%;height:100%}
+.now{padding:28px clamp(18px,3vw,36px);display:flex;flex-direction:column;gap:20px;min-width:0}
+.meta{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between}
+.eyebrow{font:400 11px/1.3 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--signal)}
+.spec{font-size:var(--s-xs);color:var(--muted)}
+.titling h2{margin:0;font:600 var(--s-xl)/1.08 var(--f-body);letter-spacing:-.015em;text-wrap:balance}
+.artist{margin:8px 0 0;font-size:var(--s-lg);color:var(--muted)}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.bar span{display:block;height:100%;width:0;background:var(--ink)}
+.times{display:flex;justify-content:space-between;margin-top:6px;font-size:var(--s-xs);color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;margin-top:auto}
+.power{display:inline-flex;align-items:center;gap:12px;border:0;border-radius:999px;padding:8px 22px 8px 8px;background:var(--signal);color:var(--on-signal);font:600 var(--s-md)/1 var(--f-body);cursor:pointer}
+.power .knob{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--on-signal) 18%,transparent)}
+.power[aria-pressed="true"]{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.power[aria-pressed="true"] .knob{background:var(--signal);color:var(--on-signal)}
+.power:focus-visible,.knobs input:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+.knobs{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.vol{display:flex;align-items:center;gap:10px;font-size:var(--s-sm);color:var(--muted)}
+.vol input{width:130px;max-width:40vw;accent-color:var(--signal)}
+.check{display:flex;align-items:center;gap:8px;font-size:var(--s-sm);color:var(--muted);cursor:pointer}
+.check input{accent-color:var(--signal);width:16px;height:16px;margin:0}
+.next{margin:0;padding-top:16px;border-top:1px solid var(--line);font-size:var(--s-sm);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.next .eyebrow{color:var(--muted)}
+.next b{font-weight:600}
+.msg{margin:0;font-size:var(--s-sm);color:var(--signal)}
+
+.dial{grid-column:1/-1;background:var(--dial);color:var(--dial-ink);padding:14px clamp(14px,2.4vw,24px) 16px;container-type:inline-size}
+.dial-head{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--dial-muted);letter-spacing:.06em;margin-bottom:10px}
+.dial-head b{font-weight:500;color:var(--dial-ink)}
+.scale{position:relative;height:66px}
+.bands{position:absolute;left:0;right:0;top:0;height:22px}
+.band{position:absolute;top:0;height:22px;border-left:1px solid var(--dial-muted);padding-left:6px;font:400 9px/22px var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--dial-muted);white-space:nowrap;overflow:hidden}
+.band.is-now{color:var(--dial-ink);background:color-mix(in srgb,var(--needle) 16%,transparent)}
+.ticks{position:absolute;left:0;right:0;top:28px;height:12px;border-right:1px solid var(--dial-muted);
+  background:
+    repeating-linear-gradient(to right,var(--dial-muted) 0 1px,transparent 1px 100%) 0 0/calc(100% / 24) 12px repeat-x,
+    repeating-linear-gradient(to right,color-mix(in srgb,var(--dial-muted) 50%,transparent) 0 1px,transparent 1px 100%) 0 6px/calc(100% / 96) 6px repeat-x}
+.nums{position:absolute;left:0;right:0;top:46px;height:14px;font-size:11px;color:var(--dial-muted)}
+.nums span{position:absolute;transform:translateX(-50%)}
+.nums span:first-child{transform:none}
+.nums span:last-child{transform:translateX(-100%)}
+.needle{position:absolute;top:-4px;bottom:-4px;left:0;width:2px;margin-left:-1px;background:var(--needle);box-shadow:0 0 10px var(--needle);border-radius:1px;transition:left .6s linear}
+@container (max-width:600px){.band span{display:none}}
+
+.book{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:36px 56px;padding-top:8px}
+.col{display:grid;gap:14px;align-content:start;min-width:0}
+.col + .col .label + *{margin-bottom:18px}
+.label{margin:0;font:400 11px/1.3 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.plan,.hist{list-style:none;margin:0;padding:0;display:grid}
+.plan li{display:grid;grid-template-columns:4.4em minmax(0,1fr) auto;gap:4px 16px;padding:12px 0;border-top:1px solid var(--line)}
+.plan li:last-child{border-bottom:1px solid var(--line)}
+.plan time{font-family:var(--f-mono);font-size:var(--s-sm);color:var(--muted);padding-top:1px}
+.plan b{font-weight:600}
+.plan p{margin:2px 0 0;color:var(--muted);font-size:var(--s-sm);max-width:52ch}
+.pill{align-self:start;font:400 9px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase;padding:6px 8px 5px;border-radius:4px;background:var(--signal);color:var(--on-signal)}
+.hist li{display:grid;grid-template-columns:3.4em minmax(0,1fr);gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:var(--s-sm)}
+.hist li:last-child{border-bottom:1px solid var(--line)}
+.hist time{color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.hist b{font-weight:600}
+.hist .a{color:var(--muted)}
+.facts{display:grid;gap:12px;font-size:var(--s-sm);max-width:60ch}
+.facts p{margin:0}
+.facts b{font-weight:600}
+footer{border-top:1px solid var(--line);padding-top:16px;font-size:var(--s-xs);color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between}
+
+@media (max-width:760px){
+  .set{grid-template-columns:1fr}
+  .grille{aspect-ratio:2.2/1;border-right:0;border-bottom:1px solid var(--line);padding:12px}
+  .book{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){.needle{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1 class="wordmark">Welle Null</h1>
+      <p class="tag">Generatives Radio. Komponiert live in deinem Browser, rund um die Uhr.</p>
+    </div>
+    <div class="status">
+      <span class="lamp">Auf Sendung</span>
+      <span class="clock mono" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <section class="set" aria-label="Empfänger">
+    <div class="grille"><canvas id="grille" role="img" aria-label="Lautsprechergitter. Beim Hören zeigt es das Frequenzspektrum."></canvas></div>
+    <div class="now">
+      <div class="meta">
+        <span class="eyebrow" id="show">Sendung</span>
+        <span class="spec mono" id="spec">BPM · Tonart</span>
+      </div>
+      <div class="titling">
+        <h2 id="title">Titel</h2>
+        <p class="artist" id="artist">Interpret</p>
+      </div>
+      <div>
+        <div class="bar" aria-hidden="true"><span id="fill"></span></div>
+        <div class="times mono"><span id="pos">0:00</span><span>3:30</span></div>
+      </div>
+      <div class="controls">
+        <button id="power" class="power" type="button" aria-pressed="false">
+          <span class="knob"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg></span>
+          <span id="powerLabel">Einschalten</span>
+        </button>
+        <div class="knobs">
+          <label class="vol" for="vol"><span>Lautstärke</span><input id="vol" type="range" min="0" max="100" value="80"></label>
+          <label class="check" for="mod"><input id="mod" type="checkbox" checked><span>Ansagen</span></label>
+        </div>
+      </div>
+      <p class="next"><span class="eyebrow">Danach</span><span class="mono dim" id="nextAt">--:--</span><b id="nextTitle">Titel</b><span class="dim" id="nextArtist">Interpret</span></p>
+      <p class="msg" id="msg" hidden></p>
+    </div>
+    <div class="dial" aria-label="Senderskala über 24 Stunden">
+      <div class="dial-head mono"><span>WELLE NULL · 0,0 MHz</span><span>Jetzt <b id="dialNow">--:--</b></span></div>
+      <div class="scale">
+        <div class="bands" id="bands"></div>
+        <div class="ticks"></div>
+        <div class="nums mono" id="nums"></div>
+        <div class="needle" id="needle"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="book">
+    <div class="col">
+      <h3 class="label">Sendeplan · Berliner Zeit</h3>
+      <ol class="plan" id="plan"></ol>
+    </div>
+    <div class="col">
+      <h3 class="label">Zuletzt gelaufen</h3>
+      <ol class="hist" id="hist"></ol>
+      <h3 class="label">So funktioniert Welle Null</h3>
+      <div class="facts">
+        <p><b>Kein Studio, keine Platten.</b> Jeder Titel entsteht in dem Moment, in dem du zuhörst, in deinem Browser aus Oszillatoren, Filtern und Rauschen.</p>
+        <p><b>Alle hören dasselbe.</b> Die Uhrzeit legt Titel, Tempo, Tonart und jede Note fest. Wer um 21:14 einschaltet, hört genau den Ton, den alle anderen um 21:14 hören.</p>
+        <p><b>Null Kosten.</b> Es fließt kein Audio durchs Netz. Keine Werbung, keine lizenzierte Musik, kein Tracking.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Welle Null · auf Sendung seit 18. Oktober 2026</span>
+    <span>Werbebudget: 0 €. Wenn dir der Sender gefällt, schick den Link weiter.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Sendeuhr ---------- */
+const SLOT = 210;                                   // Sekunden pro Titel
+const EPOCH = Date.UTC(2026, 9, 18, 0, 0, 0) / 1000; // Sendestart
+const TZ = 'Europe/Berlin';
+
+function rnd(a, b = 0, c = 0) {
+  let h = Math.imul((a | 0) ^ 0x9e3779b9, 0x85ebca6b);
+  h ^= h >>> 15;
+  h = Math.imul(h ^ ((b | 0) + 0x7f4a7c15), 0xc2b2ae35);
+  h ^= h >>> 13;
+  h = Math.imul(h ^ ((c | 0) + 0x165667b1), 0x27d4eb2d);
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  return (h >>> 0) / 4294967296;
+}
+const pick = (arr, r) => arr[Math.min(arr.length - 1, Math.floor(r * arr.length))];
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+const wallNow = () => Date.now() / 1000;
+const slotAt = t => Math.floor((t - EPOCH) / SLOT);
+
+const fmtHM = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+const fmtClock = new Intl.DateTimeFormat('de-DE', { timeZone: TZ, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', timeZoneName: 'short' });
+function berlin(sec) {
+  let h = 0, m = 0, s = 0;
+  for (const p of fmtHM.formatToParts(new Date(sec * 1000))) {
+    if (p.type === 'hour') h = +p.value % 24;
+    else if (p.type === 'minute') m = +p.value;
+    else if (p.type === 'second') s = +p.value;
+  }
+  return { h, m, s };
+}
+const pad2 = n => String(n).padStart(2, '0');
+const hhmm = sec => { const b = berlin(sec); return pad2(b.h) + ':' + pad2(b.m); };
+const mmss = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + pad2(s % 60); };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- Programm ---------- */
+const SCALES = {
+  major: { s: [0, 2, 4, 5, 7, 9, 11], n: 'Dur' },
+  minor: { s: [0, 2, 3, 5, 7, 8, 10], n: 'Moll' },
+  dorian: { s: [0, 2, 3, 5, 7, 9, 10], n: 'Dorisch' },
+  mixo: { s: [0, 2, 4, 5, 7, 9, 10], n: 'Mixolydisch' },
+  lydian: { s: [0, 2, 4, 6, 7, 9, 11], n: 'Lydisch' },
+  penta: { s: [0, 3, 5, 7, 10], n: 'Pentatonik' },
+};
+const NOTE = ['C', 'Cis', 'D', 'Es', 'E', 'F', 'Fis', 'G', 'As', 'A', 'B', 'H'];
+
+const SHOWS = [
+  { id: 'nacht', name: 'Nachtschicht', from: 0, to: 6,
+    desc: 'Langsame Flächen, viel Hall, kein Schlagzeug. Für Wachliegende und Nachtschichten.',
+    say: 'Langsame Flächen für alle, die noch wach sind.',
+    bpm: [58, 68], scales: ['penta', 'dorian', 'minor'], roots: [45, 47, 50], chordBars: 2,
+    pad: 'tri', bass: 'drone', lead: 'bell', dens: .16, arpRate: 0, drums: 'none', swing: 0, crackle: 0, rev: .6,
+    artists: ['Hallraum 7', 'Frau Sinus', 'Leise Technik', 'Kollektiv Nachtlicht'] },
+  { id: 'frueh', name: 'Frühfunk', from: 6, to: 10,
+    desc: 'Helle Zupfklänge und ein freundlicher Puls zum Wachwerden.',
+    say: 'Helle Töne zum Wachwerden.',
+    bpm: [96, 108], scales: ['major', 'lydian', 'mixo'], roots: [48, 50, 53], chordBars: 1,
+    pad: 'tri', bass: 'pluck', lead: 'pluck', dens: .34, arpRate: 2, drums: 'light', swing: 0, crackle: 0, rev: .3,
+    artists: ['Morgenfrequenz', 'Die Zupfer', 'Kanal Nord', 'Toaster & Theremin'] },
+  { id: 'mittag', name: 'Mittagswelle', from: 10, to: 14,
+    desc: 'Staubige Beats mit Swing und Knistern. Gut zum Arbeiten.',
+    say: 'Staubige Beats mit Knistern, gut zum Arbeiten.',
+    bpm: [76, 88], scales: ['dorian', 'minor', 'major'], roots: [45, 48, 50, 52], chordBars: 1,
+    pad: 'keys', bass: 'round', lead: 'keys', dens: .28, arpRate: 0, drums: 'lofi', swing: .22, crackle: .3, rev: .25,
+    artists: ['Staub auf Platte', 'Kassettendeck B', 'Kantinenfunk', 'Die Halbtöne'] },
+  { id: 'nachmittag', name: 'Nachmittagsdrift', from: 14, to: 18,
+    desc: 'Gleichmäßige Arpeggios, die sich langsam gegeneinander verschieben.',
+    say: 'Arpeggios, die langsam driften.',
+    bpm: [104, 116], scales: ['mixo', 'major', 'dorian'], roots: [47, 48, 50], chordBars: 1,
+    pad: 'saw', bass: 'pluck', lead: 'soft', dens: .22, arpRate: 1, drums: 'pulse', swing: 0, crackle: 0, rev: .3,
+    artists: ['Arpeggiator', 'Gleichstrom', 'Die Dreiklänge', 'Pendelzug'] },
+  { id: 'abend', name: 'Feierabend-Synth', from: 18, to: 22,
+    desc: 'Breite Sägezähne, gerader Beat, ein Blick in den Rückspiegel.',
+    say: 'Breite Synthesizer und ein gerader Beat.',
+    bpm: [100, 118], scales: ['minor', 'dorian'], roots: [45, 47, 50, 52], chordBars: 1,
+    pad: 'saw', bass: 'sub', lead: 'saw', dens: .3, arpRate: 1, drums: 'four', swing: 0, crackle: 0, rev: .35,
+    artists: ['Die Rückkopplung', 'Sägezahn', 'Neon Nord', 'Rückspiegel'] },
+  { id: 'spaet', name: 'Spätlese', from: 22, to: 24,
+    desc: 'Dubbige Akkorde mit langem Echo. Zum Runterkommen.',
+    say: 'Lange Echos zum Runterkommen.',
+    bpm: [68, 78], scales: ['minor', 'dorian'], roots: [45, 47, 50], chordBars: 2,
+    pad: 'saw', bass: 'sub', lead: 'stab', dens: 0, arpRate: 0, drums: 'dub', swing: .12, crackle: .12, rev: .4,
+    artists: ['Echokammer', 'Dub Ost', 'Bassregal', 'Der lange Hall'] },
+];
+const showAt = h => SHOWS.find(s => h >= s.from && h < s.to) || SHOWS[0];
+
+const PROGS = [[0, 5, 3, 4], [0, 3, 5, 4], [0, 4, 5, 3], [5, 3, 0, 4], [0, 2, 3, 4], [0, 3, 0, 4], [0, 5, 1, 4]];
+const ARPS = [[0, 1, 2, 1], [0, 1, 2, 3], [0, 2, 1, 3], [0, 1, 2, 3, 2, 1], [3, 2, 1, 0]];
+const BASS_PATS = {
+  light: [[0, 8, 11], [0, 6, 8]],
+  lofi: [[0, 7, 10], [0, 3, 10]],
+  pulse: [[2, 6, 10, 14], [0, 4, 8, 12]],
+  four: [[0, 2, 4, 6, 8, 10, 12, 14], [2, 6, 10, 14]],
+  dub: [[0, 6, 10], [0, 3, 8]],
+};
+const DRUMS = {
+  light: { kick: [0, 8], snare: [], hat: [2, 6, 10, 14], hatVel: .7, shaker: true },
+  lofi: { kick: [0, 7, 10], snare: [4, 12], hat: [0, 2, 4, 6, 8, 10, 12, 14], hatVel: .8 },
+  pulse: { kick: [0, 4, 8, 12], kickVel: .55, snare: [12], hat: [2, 6, 10, 14], hatVel: .9 },
+  four: { kick: [0, 4, 8, 12], snare: [4, 12], hat: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], hatVel: .6 },
+  dub: { kick: [0, 10], snare: [8], hat: [2, 6, 10, 14], hatVel: .6 },
+};
+
+const ADJ = ['Blaue', 'Leise', 'Warme', 'Ferne', 'Müde', 'Goldene', 'Schlaflose', 'Elektrische', 'Verträumte', 'Langsame', 'Kupferne', 'Neblige', 'Nächtliche', 'Flüchtige', 'Heimliche', 'Gläserne'];
+const PL = ['Antennen', 'Kraniche', 'Leuchttürme', 'Wellen', 'Möwen', 'Straßenbahnen', 'Neonröhren', 'Zugvögel', 'Satelliten', 'Wolken', 'Laternen', 'Fähren', 'Kassetten', 'Brücken', 'Quallen', 'Funkmasten'];
+const MASS = ['Kupfer', 'Nebel', 'Regen', 'Neon', 'Salz', 'Rauschen', 'Strom', 'Schnee', 'Beton', 'Honig', 'Mondlicht', 'Asphalt', 'Ozon', 'Sand'];
+const CITY = ['Bremerhaven', 'Görlitz', 'Wuppertal', 'Rostock', 'Passau', 'Kassel', 'Flensburg', 'Jena', 'Ulm', 'Bochum', 'Cottbus', 'Trier', 'Kiel', 'Halle'];
+
+function makeTitle(slot) {
+  const r = k => rnd(slot, 20 + k);
+  const p = r(0), A = pick(ADJ, r(1)), P = pick(PL, r(2)), C = pick(CITY, r(3)), M = pick(MASS, r(4));
+  let M2 = pick(MASS, r(5)); if (M2 === M) M2 = MASS[(MASS.indexOf(M) + 3) % MASS.length];
+  if (p < .34) return `${A} ${P}`;
+  if (p < .46) return `Nachts in ${C}`;
+  if (p < .58) return `${P} über ${C}`;
+  if (p < .72) return `${M} und ${M2}`;
+  if (p < .80) return `Gleis ${1 + Math.floor(r(6) * 19)}`;
+  if (p < .88) return `Postkarte aus ${C}`;
+  if (p < .94) return `${M} im Ohr`;
+  return `Frequenz ${88 + Math.floor(r(7) * 20)},${Math.floor(r(8) * 10)}`;
+}
+
+const cache = new Map();
+function track(slot) {
+  let T = cache.get(slot);
+  if (T) return T;
+  const start = EPOCH + slot * SLOT;
+  const { h, m } = berlin(start);
+  const S = showAt(h);
+  const r = k => rnd(slot, k);
+  // Tempo so strecken, dass ganze Takte den Slot bis auf 1 s füllen
+  const bars = Math.round((SLOT - 1) * (S.bpm[0] + r(1) * (S.bpm[1] - S.bpm[0])) / 240);
+  const barDur = (SLOT - 1) / bars, bpm = Math.round(240 / barDur);
+  const scaleKey = pick(S.scales, r(2));
+  const root = pick(S.roots, r(3));
+  T = {
+    slot, start, h, m, show: S, bpm, scaleKey, scale: SCALES[scaleKey].s, root,
+    prog: pick(PROGS, r(4)), barDur, stepDur: barDur / 16, bars,
+    swing: S.swing, dens: S.dens * (.8 + r(5) * .45), leadIn: .16 + r(6) * .14,
+    sev: r(7) < .4, kickExtra: r(8) < .45,
+    bassPat: S.drums === 'none' ? null : pick(BASS_PATS[S.drums], r(9)),
+    arpPat: pick(ARPS, r(10)),
+    title: makeTitle(slot), artist: pick(S.artists, r(12)),
+  };
+  cache.set(slot, T);
+  if (cache.size > 80) cache.delete(cache.keys().next().value);
+  return T;
+}
+function keyLabel(T) {
+  const pc = T.root % 12, name = NOTE[pc];
+  if (T.scaleKey === 'major') return name + '-Dur';
+  if (T.scaleKey === 'minor') return name.toLowerCase() + '-Moll';
+  return name + ' ' + SCALES[T.scaleKey].n;
+}
+function deg2midi(T, deg) {
+  const s = T.scale, n = s.length, o = Math.floor(deg / n);
+  return T.root + s[((deg % n) + n) % n] + 12 * o;
+}
+function ampAt(T, pos) {
+  const end = T.bars * T.barDur;
+  return Math.max(0, Math.min(1, .4 + pos / 4, (end - pos) / 6));
+}
+function section(T, p) {
+  return {
+    bass: p >= .08 && p < .93,
+    drums: p >= .1 && p < .88 && !(p >= .47 && p < .55),
+    hats: p >= .05 && p < .93,
+    lead: (p >= T.leadIn && p < .47) || (p >= .55 && p < .9),
+    arp: p >= .1 && p < .95,
+  };
+}
+
+/* ---------- Klangerzeugung ---------- */
+let ac = null, duck, master, analyser, revIn, dlyIn, dly, noiseBuf, freq;
+let sess = null; // Busse der laufenden Hörsitzung
+function build() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error('no-webaudio');
+  ac = new AC({ latencyHint: 'playback' });
+  duck = ac.createGain();
+  master = ac.createGain();
+  const comp = ac.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 12; comp.ratio.value = 3.5; comp.attack.value = .01; comp.release.value = .25;
+  analyser = ac.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .8;
+  analyser.minDecibels = -96; analyser.maxDecibels = -28;
+  duck.connect(master); master.connect(comp); comp.connect(analyser); analyser.connect(ac.destination);
+
+  const conv = ac.createConvolver();
+  const len = Math.floor(ac.sampleRate * 2.8), ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  conv.buffer = ir;
+  revIn = ac.createGain(); const revOut = ac.createGain(); revOut.gain.value = .8;
+  revIn.connect(conv); conv.connect(revOut); revOut.connect(duck);
+
+  dlyIn = ac.createGain(); dly = ac.createDelay(2);
+  const fb = ac.createGain(); fb.gain.value = .38;
+  const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+  const dOut = ac.createGain(); dOut.gain.value = .6;
+  dlyIn.connect(dly); dly.connect(lp); lp.connect(fb); fb.connect(dly); lp.connect(dOut); dOut.connect(duck);
+
+  noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+  const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  freq = new Uint8Array(analyser.frequencyBinCount);
+  applyVolume(true);
+}
+function openSession() {
+  const s = { bus: ac.createGain(), rev: ac.createGain(), dly: ac.createGain() };
+  s.bus.connect(duck); s.rev.connect(revIn); s.dly.connect(dlyIn);
+  return s;
+}
+function closeSession(s) {
+  const t = ac.currentTime;
+  for (const g of [s.bus, s.rev, s.dly]) { g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + .25); }
+  setTimeout(() => { for (const g of [s.bus, s.rev, s.dly]) g.disconnect(); }, 600);
+}
+function out(node, pan = 0, rev = 0, d = 0) {
+  let o = node;
+  if (pan && ac.createStereoPanner) { const p = ac.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); node.connect(p); o = p; }
+  o.connect(sess.bus);
+  if (rev > 0) { const g = ac.createGain(); g.gain.value = rev; o.connect(g); g.connect(sess.rev); }
+  if (d > 0) { const g = ac.createGain(); g.gain.value = d; o.connect(g); g.connect(sess.dly); }
+}
+function voice(o) {
+  const t = o.t, dur = Math.max(.02, o.dur), vel = Math.max(.0002, o.vel), a = o.a ?? .005;
+  const osc = ac.createOscillator();
+  osc.type = o.type || 'sine';
+  osc.frequency.setValueAtTime(o.f, t);
+  if (o.detune) osc.detune.setValueAtTime(o.detune, t);
+  let head = osc;
+  if (o.cutoff) {
+    const fl = ac.createBiquadFilter(); fl.type = 'lowpass'; fl.Q.value = o.q ?? .8;
+    if (o.fenv) { fl.frequency.setValueAtTime(o.cutoff * (1 + o.fenv), t); fl.frequency.exponentialRampToValueAtTime(o.cutoff, t + Math.max(.06, Math.min(dur, 1.5) * .7)); }
+    else fl.frequency.setValueAtTime(o.cutoff, t);
+    osc.connect(fl); head = fl;
+  }
+  const g = ac.createGain(); head.connect(g);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vel, t + a);
+  let end;
+  if (o.pluck) { g.gain.exponentialRampToValueAtTime(.0001, t + a + dur); end = t + a + dur + .03; }
+  else {
+    const r = o.r ?? .2, hold = Math.max(a, dur);
+    g.gain.setValueAtTime(vel, t + hold); g.gain.linearRampToValueAtTime(0, t + hold + r); end = t + hold + r + .03;
+  }
+  out(g, o.pan || 0, o.rev || 0, o.dly || 0);
+  osc.start(t); osc.stop(end);
+}
+function noise(t, v, type, f, q, dur, rev = 0, pan = 0) {
+  const s = ac.createBufferSource(); s.buffer = noiseBuf;
+  const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(fl); fl.connect(g); out(g, pan, rev);
+  s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+}
+function kick(t, v) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(46, t + .13);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + .42);
+  o.connect(g); out(g); o.start(t); o.stop(t + .45);
+}
+function snare(t, v) {
+  noise(t, v, 'bandpass', 1900, .7, .2, .25);
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = 'triangle';
+  o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(140, t + .08);
+  g.gain.setValueAtTime(v * .6, t); g.gain.exponentialRampToValueAtTime(.0001, t + .12);
+  o.connect(g); out(g); o.start(t); o.stop(t + .14);
+}
+const hat = (t, v, f = 7500, d = .05) => noise(t, v, 'highpass', f, .5, d, .05, .25);
+const crackle = (t, v) => noise(t, v, 'highpass', 1800, .5, .004, 0, (Math.random() - .5) * .8);
+
+function pad(T, ch, t, dur, amp, attack) {
+  const S = T.show, degs = [0, 2, 4];
+  if (T.sev) degs.push(6);
+  degs.forEach((d, i) => {
+    const f = mtof(deg2midi(T, ch + d) + 12), pan = (i - (degs.length - 1) / 2) * .35;
+    if (S.pad === 'keys') {
+      voice({ type: 'sine', f, t, dur: Math.min(dur * .9, 2.4), vel: .075 * amp, a: .006, pluck: true, pan, rev: S.rev });
+      voice({ type: 'triangle', f: f * 2, t, dur: .5, vel: .018 * amp, a: .004, pluck: true, pan, rev: S.rev });
+    } else if (S.pad === 'saw') {
+      for (const dt of [-8, 8]) voice({ type: 'sawtooth', f, t, dur, vel: .02 * amp, a: attack ?? Math.min(.9, dur * .3), r: 1.2, cutoff: S.id === 'spaet' ? 900 : 1500, q: .6, detune: dt, pan: pan + dt / 40, rev: S.rev });
+    } else {
+      for (const dt of [-6, 6]) voice({ type: 'triangle', f, t, dur, vel: .04 * amp, a: attack ?? Math.min(1.6, dur * .4), r: 1.8, detune: dt, pan: pan + dt / 30, rev: S.rev });
+    }
+  });
+}
+function drone(T, ch, t, dur, amp, attack = 1.2) {
+  let m = deg2midi(T, ch) - 12; while (m < 36) m += 12; while (m > 50) m -= 12;
+  voice({ type: 'sine', f: mtof(m), t, dur, vel: .2 * amp, a: attack, r: 1.5 });
+  voice({ type: 'triangle', f: mtof(m + 12), t, dur, vel: .03 * amp, a: attack + .3, r: 1.5, rev: .4 });
+}
+function bassStep(T, ch, bar, st, t, amp, sec) {
+  const S = T.show;
+  if (S.bass === 'drone') {
+    if (st === 0 && bar % S.chordBars === 0) drone(T, ch, t, T.barDur * S.chordBars, amp);
+    return;
+  }
+  if (!sec.bass || !T.bassPat) return;
+  const pat = T.bassPat, i = pat.indexOf(st);
+  if (i < 0) return;
+  let m = deg2midi(T, ch) - 12; while (m < 36) m += 12; while (m > 50) m -= 12;
+  const nextHit = i + 1 < pat.length ? pat[i + 1] : pat[0] + 16;
+  const len = (nextHit - st) * T.stepDur * .85;
+  if (i === pat.length - 1 && pat.length > 1 && rnd(T.slot, 300, bar) < .3) m += 7;
+  const f = mtof(m);
+  if (S.bass === 'sub') {
+    voice({ type: 'sine', f, t, dur: len, vel: .24 * amp, a: .006, r: .06 });
+    voice({ type: 'square', f, t, dur: len * .6, vel: .025 * amp, a: .004, r: .05, cutoff: 700 });
+  } else if (S.bass === 'round') {
+    voice({ type: 'sine', f, t, dur: len, vel: .17 * amp, a: .01, r: .1 });
+    voice({ type: 'triangle', f: f * 2, t, dur: len * .5, vel: .04 * amp, a: .004, pluck: true });
+  } else {
+    voice({ type: 'triangle', f, t, dur: Math.min(len, .5), vel: .26 * amp, a: .004, pluck: true, cutoff: 900, fenv: 1.5 });
+  }
+}
+function drumStep(T, bar, st, t, amp, sec) {
+  const D = DRUMS[T.show.drums];
+  if (!D) return;
+  if (sec.drums) {
+    if (D.kick.includes(st) || (T.kickExtra && st === 14 && bar % 2 === 1)) kick(t, (D.kickVel || .9) * amp);
+    if (D.snare.includes(st)) snare(t, .3 * amp);
+  }
+  if ((sec.drums || sec.hats) && D.hat.includes(st)) {
+    const acc = st % 4 === 2 ? 1 : .65;
+    hat(t, .11 * D.hatVel * acc * (.75 + .5 * rnd(T.slot, 700, bar * 16 + st)) * amp);
+  }
+  if (D.shaker && sec.hats && st % 2 === 1) hat(t, .018 * amp, 9000, .03);
+}
+function arpStep(T, ch, s, t, amp) {
+  const n = T.scale.length, tones = [0, 2, 4, n], rate = T.show.arpRate;
+  const k = Math.floor(s / rate);
+  const m = deg2midi(T, ch + tones[T.arpPat[k % T.arpPat.length]]) + 12;
+  const bright = T.show.id === 'frueh';
+  voice({ type: bright ? 'triangle' : 'square', f: mtof(m), t, dur: .16, vel: (bright ? .05 : .022) * amp, a: .003, pluck: true, cutoff: 2400, fenv: 1, pan: k % 2 ? .4 : -.4, rev: .15, dly: .18 });
+}
+function leadStep(T, ch, bar, st, t, amp) {
+  const S = T.show;
+  if (S.lead === 'stab') {
+    if (st === 4 || st === 12) [0, 2, 4].forEach((d, i) => {
+      voice({ type: 'square', f: mtof(deg2midi(T, ch + d) + 12), t, dur: .12, vel: .03 * amp, a: .004, pluck: true, cutoff: 1300, fenv: .6, pan: (i - 1) * .2, rev: .2, dly: .55 });
+    });
+    return;
+  }
+  const k = (bar % 2) * 16 + st, seed = T.slot * 13 + (Math.floor(bar / 4) % 2) * 101;
+  const on = j => rnd(seed, 1, j) < (j % 2 === 0 ? T.dens : T.dens * .25);
+  if (!on(k)) return;
+  let len = 1; while (len < 6 && k + len < 32 && !on(k + len)) len++;
+  const offs = S.lead === 'bell' ? [0, 2, 4, 7, 4, 9] : [0, 2, 4, 7, 4, 2, 1, 3, 5, 7];
+  const off = offs[Math.floor(rnd(seed, 2, k) * offs.length)];
+  const f = mtof(deg2midi(T, ch + off) + (S.lead === 'bell' ? 24 : 12)), dur = len * T.stepDur;
+  switch (S.lead) {
+    case 'bell':
+      voice({ type: 'sine', f, t, dur: 2.6, vel: .07 * amp, a: .004, pluck: true, rev: .7, dly: .3, pan: .15 });
+      voice({ type: 'sine', f: f * 2.01, t, dur: .9, vel: .018 * amp, a: .003, pluck: true, rev: .6 });
+      break;
+    case 'pluck':
+      voice({ type: 'triangle', f, t, dur: .45, vel: .09 * amp, a: .003, pluck: true, cutoff: 3200, fenv: 1.5, rev: .2, dly: .25, pan: -.1 });
+      break;
+    case 'keys':
+      voice({ type: 'sine', f, t, dur: 1.1, vel: .08 * amp, a: .004, pluck: true, rev: .3, pan: .1 });
+      voice({ type: 'triangle', f: f * 2, t, dur: .3, vel: .015 * amp, a: .003, pluck: true });
+      break;
+    case 'soft':
+      voice({ type: 'triangle', f, t, dur, vel: .07 * amp, a: .03, r: .25, rev: .3, dly: .2 });
+      break;
+    case 'saw':
+      for (const dt of [-9, 9]) voice({ type: 'sawtooth', f, t, dur, vel: .032 * amp, a: .01, r: .18, cutoff: 1900, fenv: 1.2, q: 2, detune: dt, pan: dt / 45, rev: .25, dly: .28 });
+      break;
+  }
+}
+function playStep(s, t) {
+  const T = cur, S = T.show, bar = Math.floor(s / 16), st = s % 16;
+  if (bar >= T.bars) return;
+  const amp = ampAt(T, s * T.stepDur);
+  if (amp <= .001) return;
+  const tt = t + (st & 1 ? T.swing * T.stepDur : 0);
+  const ch = T.prog[Math.floor(bar / S.chordBars) % T.prog.length];
+  const sec = section(T, bar / T.bars);
+  if (st === 0 && bar % S.chordBars === 0) pad(T, ch, tt, T.barDur * S.chordBars, amp);
+  bassStep(T, ch, bar, st, tt, amp, sec);
+  drumStep(T, bar, st, tt, amp, sec);
+  if (S.arpRate && sec.arp && st % S.arpRate === 0) arpStep(T, ch, s, tt, amp);
+  if (sec.lead) leadStep(T, ch, bar, st, tt, amp);
+  if (S.crackle && rnd(T.slot, 900, s) < S.crackle) crackle(tt + rnd(T.slot, 901, s) * T.stepDur, .07 * amp);
+}
+
+/* ---------- Sendeablauf ---------- */
+let playing = false, cur = null, ctx0 = 0, nextStep = 0, timer = 0;
+function beginTrack(slot, startCtx, midway) {
+  cur = track(slot); ctx0 = startCtx;
+  dly.delayTime.setTargetAtTime(cur.stepDur * 3, ac.currentTime, .05);
+  const pos = ac.currentTime - ctx0 + .08;
+  nextStep = Math.max(0, Math.ceil(pos / cur.stepDur));
+  if (midway && pos > 0) {
+    const bar = Math.floor(nextStep / 16), S = cur.show;
+    if (bar < cur.bars) {
+      const block = Math.floor(bar / S.chordBars), rem = (block + 1) * S.chordBars * cur.barDur - pos;
+      const ch = cur.prog[block % cur.prog.length], amp = ampAt(cur, pos);
+      if (rem > .4 && amp > .001) {
+        pad(cur, ch, ac.currentTime + .05, rem, amp, .5);
+        if (S.bass === 'drone') drone(cur, ch, ac.currentTime + .05, rem, amp, .6);
+      }
+    }
+  }
+  mediaMeta(cur);
+}
+function resync() {
+  const now = wallNow(), slot = slotAt(now);
+  beginTrack(slot, ac.currentTime - (now - (EPOCH + slot * SLOT)), true);
+}
+function sched() {
+  if (!playing) return;
+  if (ctx0 + nextStep * cur.stepDur < ac.currentTime - .3) { resync(); }
+  const horizon = ac.currentTime + (document.hidden ? 2.5 : .3);
+  for (;;) {
+    if (nextStep >= cur.bars * 16) {
+      let next = ctx0 + SLOT;
+      if (next > horizon) break;
+      const slot = cur.slot + 1;
+      const byWall = ac.currentTime + ((EPOCH + slot * SLOT) - wallNow());
+      if (Math.abs(byWall - next) > .75) next = byWall;
+      beginTrack(slot, next, false);
+      queueAnnounce(cur, next);
+      continue;
+    }
+    const t = ctx0 + nextStep * cur.stepDur;
+    if (t > horizon) break;
+    playStep(nextStep, t);
+    nextStep++;
+  }
+}
+
+/* ---------- Ansagen ---------- */
+const FACTS = [
+  'Alles, was du hörst, entsteht gerade erst, in deinem Browser.',
+  'Wer jetzt zuhört, hört denselben Ton wie du. Im selben Moment.',
+  'Keine Platten, keine Werbung, keine Lizenzen. Nur Mathematik und eine Uhr.',
+  'Unser Werbebudget beträgt null Euro. Wenn dir der Sender gefällt, erzähl es weiter.',
+  'Dieses Stück wurde noch nie gespielt. Und so kommt es auch nicht wieder.',
+];
+const hasSpeech = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+let speaker = null, modOn = true, unduckTimer = 0;
+function pickVoice() {
+  if (!hasSpeech) return;
+  const vs = speechSynthesis.getVoices().filter(v => /^de([-_]|$)/i.test(v.lang));
+  speaker = vs.find(v => /premium|enhanced|natural|google|anna|petra|markus/i.test(v.name)) || vs[0] || null;
+}
+function duckTo(v) {
+  if (!ac) return;
+  const t = ac.currentTime;
+  duck.gain.cancelScheduledValues(t); duck.gain.setTargetAtTime(v, t, .15);
+}
+function say(text) {
+  if (!hasSpeech || !modOn || !playing) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'de-DE'; if (speaker) u.voice = speaker;
+  u.rate = 1; u.pitch = 1; u.volume = Math.max(.2, volume());
+  u.onstart = () => { duckTo(.3); clearTimeout(unduckTimer); unduckTimer = setTimeout(() => duckTo(1), 20000); };
+  u.onend = u.onerror = () => { clearTimeout(unduckTimer); duckTo(1); };
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+function timeWords(h, m) { return m === 0 ? `${h} Uhr` : `${h} Uhr ${m}`; }
+function announceText(T) {
+  const prev = track(T.slot - 1), parts = [], tw = timeWords(T.h, T.m);
+  if (prev.show !== T.show) parts.push(`Es ist ${tw}. Hier ist Welle Null mit ${T.show.name}. ${T.show.say}`);
+  else parts.push(rnd(T.slot, 50) < .5 ? `Welle Null, ${tw}.` : `Es ist ${tw} auf Welle Null.`);
+  parts.push(pick([`Jetzt: ${T.artist} mit ${T.title}.`, `Als Nächstes ${T.title}, von ${T.artist}.`, `Hier kommt ${T.artist}. Der Titel: ${T.title}.`], rnd(T.slot, 51)));
+  if (rnd(T.slot, 52) < .3) parts.push(pick(FACTS, rnd(T.slot, 53)));
+  return parts.join(' ');
+}
+function welcomeText() {
+  const T = track(slotAt(wallNow())), b = berlin(wallNow());
+  return `Welle Null. Schön, dass du eingeschaltet hast. Es ist ${timeWords(b.h, b.m)}. Du hörst ${T.show.name}, gerade läuft ${T.title} von ${T.artist}.`;
+}
+function queueAnnounce(T, at) {
+  const ms = Math.max(0, (at - ac.currentTime) * 1000 + 600);
+  setTimeout(() => { if (playing && cur && cur.slot === T.slot) say(announceText(T)); }, ms);
+}
+
+/* ---------- Bedienung ---------- */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('wn.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('wn.' + k, JSON.stringify(v)); } catch (e) { /* egal */ } },
+};
+const volEl = $('vol'), modEl = $('mod'), powerEl = $('power'), msgEl = $('msg');
+volEl.value = store.get('vol', 80);
+modEl.checked = modOn = store.get('mod', true);
+if (!hasSpeech) modEl.closest('label').hidden = true;
+const volume = () => Math.max(0, Math.min(1, volEl.value / 100));
+function applyVolume(instant) {
+  if (!ac) return;
+  const v = volume() * volume() * .9, t = ac.currentTime;
+  if (instant) master.gain.setValueAtTime(v, t); else master.gain.setTargetAtTime(v, t, .05);
+}
+volEl.addEventListener('input', () => { applyVolume(false); store.set('vol', +volEl.value); });
+modEl.addEventListener('change', () => {
+  modOn = modEl.checked; store.set('mod', modOn);
+  if (!modOn && hasSpeech) { speechSynthesis.cancel(); duckTo(1); }
+});
+
+function setPower(on) {
+  powerEl.setAttribute('aria-pressed', on ? 'true' : 'false');
+  $('powerLabel').textContent = on ? 'Ausschalten' : 'Einschalten';
+}
+function start() {
+  try { if (!ac) build(); }
+  catch (e) { msgEl.textContent = 'Dein Browser kann kein Web Audio abspielen. Probier es mit einem aktuellen Chrome, Firefox oder Safari.'; msgEl.hidden = false; return; }
+  const resumed = ac.resume();
+  playing = true;
+  sess = openSession();
+  duck.gain.cancelScheduledValues(0); duck.gain.value = 1;
+  setPower(true);
+  say(welcomeText());
+  Promise.resolve(resumed).then(() => {
+    if (!playing) return;
+    resync();
+    clearInterval(timer); timer = setInterval(sched, 40); sched();
+    if (!raf) raf = requestAnimationFrame(frame);
+  }).catch(() => { msgEl.textContent = 'Der Ton ließ sich nicht starten. Tippe noch einmal auf Einschalten.'; msgEl.hidden = false; stop(); });
+}
+function stop() {
+  playing = false;
+  clearInterval(timer); timer = 0;
+  if (sess) { closeSession(sess); sess = null; }
+  if (hasSpeech) speechSynthesis.cancel();
+  setPower(false);
+  setTimeout(() => { if (!playing && ac) ac.suspend(); levels = null; drawGrille(); }, 3200);
+}
+powerEl.addEventListener('click', () => (playing ? stop() : start()));
+document.addEventListener('visibilitychange', () => { if (playing) sched(); });
+function mediaMeta(T) {
+  if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+  try { navigator.mediaSession.metadata = new MediaMetadata({ title: T.title, artist: T.artist, album: 'Welle Null · ' + T.show.name }); } catch (e) { /* egal */ }
+}
+
+/* ---------- Lautsprechergitter ---------- */
+const cv = $('grille'), g2 = cv.getContext('2d');
+let colors = {}, gw = 0, gh = 0, levels = null, lv = new Float32Array(0), raf = 0, lastDraw = 0;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+function readColors() {
+  const s = getComputedStyle(document.documentElement);
+  colors = { hole: s.getPropertyValue('--hole').trim() || '#ccc', ring: s.getPropertyValue('--muted').trim() || '#666', sig: s.getPropertyValue('--signal').trim() || '#e50' };
+}
+function sizeGrille() {
+  const r = cv.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+  gw = r.width; gh = r.height;
+  cv.width = Math.max(1, Math.round(gw * d)); cv.height = Math.max(1, Math.round(gh * d));
+  g2.setTransform(d, 0, 0, d, 0, 0);
+  drawGrille();
+}
+function computeLevels(cols) {
+  analyser.getByteFrequencyData(freq);
+  if (lv.length !== cols) lv = new Float32Array(cols);
+  const lo = 2, hi = Math.min(freq.length - 1, 360);
+  for (let c = 0; c < cols; c++) {
+    const a = Math.floor(lo * Math.pow(hi / lo, c / cols)), b = Math.max(a + 1, Math.floor(lo * Math.pow(hi / lo, (c + 1) / cols)));
+    let s = 0; for (let i = a; i < b; i++) s = Math.max(s, freq[i]);
+    const tilt = .85 + .9 * c / cols; // Höhen sind leiser, also anheben
+    lv[c] = Math.max(Math.min(1, Math.max(0, (s / 255 * tilt - .35) / .6)), lv[c] * .88);
+  }
+  return lv;
+}
+function drawGrille() {
+  if (!gw || !gh) return;
+  g2.clearRect(0, 0, gw, gh);
+  const gap = gw < 380 ? 11 : 13, rad = gap * .27;
+  const cols = Math.max(1, Math.floor(gw / gap)), rows = Math.max(1, Math.floor(gh / gap));
+  const ox = (gw - (cols - 1) * gap) / 2, oy = (gh - (rows - 1) * gap) / 2;
+  const cx = gw / 2, cy = gh / 2, R = Math.min(gw, gh) * .3, th = gap * 1.05;
+  const lit = levels ? computeLevels(cols) : null;
+  const groups = { hole: [], ring: [], sig: [] };
+  for (let c = 0; c < cols; c++) {
+    const top = lit ? lit[c] * rows : -1;
+    for (let r = 0; r < rows; r++) {
+      const x = ox + c * gap, y = oy + r * gap;
+      if (rows - 1 - r < top) groups.sig.push(x, y);
+      else if (Math.abs(Math.hypot(x - cx, y - cy) - R) < th) groups.ring.push(x, y);
+      else groups.hole.push(x, y);
+    }
+  }
+  for (const k of ['hole', 'ring', 'sig']) {
+    const pts = groups[k]; if (!pts.length) continue;
+    g2.fillStyle = colors[k]; g2.beginPath();
+    for (let i = 0; i < pts.length; i += 2) { g2.moveTo(pts[i] + rad, pts[i + 1]); g2.arc(pts[i], pts[i + 1], rad, 0, Math.PI * 2); }
+    g2.fill();
+  }
+}
+function frame(ts) {
+  raf = playing ? requestAnimationFrame(frame) : 0;
+  if (!playing) return;
+  if (reduce.matches && ts - lastDraw < 250) return;
+  lastDraw = ts; levels = true; drawGrille();
+}
+new ResizeObserver(sizeGrille).observe(cv);
+const refreshTheme = () => { readColors(); drawGrille(); };
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', refreshTheme);
+new MutationObserver(refreshTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+/* ---------- Anzeige ---------- */
+function buildStatic() {
+  $('bands').innerHTML = SHOWS.map(s => `<div class="band" data-id="${s.id}" style="left:${s.from / 24 * 100}%;width:${(s.to - s.from) / 24 * 100}%" title="${esc(s.name)}"><span>${esc(s.name)}</span></div>`).join('');
+  $('nums').innerHTML = [0, 3, 6, 9, 12, 15, 18, 21, 24].map(h => `<span style="left:${h / 24 * 100}%">${pad2(h)}</span>`).join('');
+  $('plan').innerHTML = SHOWS.map(s => `<li data-id="${s.id}"><time>${pad2(s.from)}–${pad2(s.to)}</time><div><b>${esc(s.name)}</b><p>${esc(s.desc)}</p></div><span class="pill" hidden>läuft</span></li>`).join('');
+}
+let shownSlot = null;
+function render() {
+  const now = wallNow(), slot = slotAt(now), T = track(slot), b = berlin(now);
+  $('clock').textContent = fmtClock.format(new Date(now * 1000));
+  $('dialNow').textContent = pad2(b.h) + ':' + pad2(b.m);
+  $('needle').style.left = ((b.h * 3600 + b.m * 60 + b.s) / 86400 * 100) + '%';
+  const pos = now - T.start;
+  $('pos').textContent = mmss(pos);
+  $('fill').style.width = Math.min(100, pos / SLOT * 100) + '%';
+  if (slot === shownSlot) return;
+  shownSlot = slot;
+  $('show').textContent = T.show.name;
+  $('spec').textContent = `${T.bpm} BPM · ${keyLabel(T)}`;
+  $('title').textContent = T.title;
+  $('artist').textContent = T.artist;
+  const N = track(slot + 1);
+  $('nextAt').textContent = hhmm(N.start);
+  $('nextTitle').textContent = N.title;
+  $('nextArtist').textContent = N.artist;
+  document.querySelectorAll('.band').forEach(el => el.classList.toggle('is-now', el.dataset.id === T.show.id));
+  document.querySelectorAll('#plan li').forEach(el => { el.querySelector('.pill').hidden = el.dataset.id !== T.show.id; });
+  const hist = [];
+  for (let i = 1; i <= 5; i++) { const P = track(slot - i); hist.push(`<li><time>${hhmm(P.start)}</time><span><b>${esc(P.title)}</b> <span class="a">· ${esc(P.artist)}</span></span></li>`); }
+  $('hist').innerHTML = hist.join('');
+  if (!playing) mediaMeta(T);
+}
+
+buildStatic();
+readColors();
+render();
+setInterval(render, 500);
+if (hasSpeech) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
+})();
+</script>
+</body>
+</html>
